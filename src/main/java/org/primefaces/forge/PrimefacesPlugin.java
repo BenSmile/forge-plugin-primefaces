@@ -60,6 +60,7 @@ public class PrimefacesPlugin implements Plugin {
     private final Event<InstallFacets> installFacets;
 
     private static final String PRIMEFACES_THEME = "primefaces.THEME";
+    private static final String PRIMEFACES_CSV = "primefaces.CLIENT_SIDE_VALIDATION";
 
     @Inject
     private ShellPrompt prompt;
@@ -111,6 +112,7 @@ public class PrimefacesPlugin implements Plugin {
     public void exampleDefaultCommand(@Option final String opt, final PipeOut pipeOut) {
         pipeOut.println(ShellColor.BLUE, "Use the install commands to install:");
         pipeOut.println(ShellColor.BLUE, "  install-example-facelet: a sample Primefaces enabled facelet file");
+        pipeOut.println(ShellColor.BLUE, "  install-CSV: Configure Client Side Validation");
     }
 
     @Command("install-example-facelet")
@@ -121,6 +123,37 @@ public class PrimefacesPlugin implements Plugin {
         createFaceletFiles(evaluator, pipeOut);
         createPrimeBean(evaluator, pipeOut);
         changeWelcomeFile();
+    }
+
+    @Command("install-CSV")
+    public void installClientSideValidition(final PipeOut pipeOut) {
+        assertInstalled();
+        PrimefacesFacet primefacesFacet = tryToGetFacet(PrimefacesFacet.class);
+        if (primefacesFacet != null) {
+            if (primefacesFacet.getVersion().getVersion() < 4) {
+                pipeOut.println(ShellColor.RED, "PrimeFaces Client Side Validation is only available in version 4");
+                return;
+            }
+
+        }
+        ServletFacet servlet = project.getFacet(ServletFacet.class);
+        WebAppDescriptorImpl webxml = (WebAppDescriptorImpl) servlet.getConfig();
+
+        List<Node> nodes = webxml.getRootNode().get("context-param/param-name");
+
+        boolean found = false;
+        for (Node node : nodes) {
+            if (PRIMEFACES_CSV.equals(node.getText())) {
+                node.getParent().getOrCreate("param-value").text("true");
+                found = true;
+                continue;
+            }
+        }
+        if (!found) {
+            webxml.contextParam(PRIMEFACES_CSV, "true");
+        }
+        servlet.saveConfig(webxml);
+
     }
 
     private void addTemplateVariables(TemplateEvaluator someEvaluator) {
@@ -184,7 +217,6 @@ public class PrimefacesPlugin implements Plugin {
             if (PRIMEFACES_THEME.equals(node.getText())) {
                 node.getParent().getOrCreate("param-value").text(theme.toLowerCase(Locale.ENGLISH));
                 themeUpdated = true;
-                continue;
             }
         }
         if (!themeUpdated) {
@@ -195,7 +227,11 @@ public class PrimefacesPlugin implements Plugin {
     }
 
     private String getPrimefacesThemeVersion(PrimefacesFacet somePrimefacesFacet) {
-        String version = "1.0.2"; // For the 3.0 versions
+        String version = "1.0.8";
+
+        if (somePrimefacesFacet.getVersion().getVersion() == 3) {
+            version = "1.0.2";
+        }
         if (somePrimefacesFacet.getVersion().getVersion() == 2) {
             version = "1.0.1";
         }

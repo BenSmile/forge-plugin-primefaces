@@ -117,7 +117,7 @@ public class PrimefacesFacet extends BaseFacet {
             descriptor.contextParam("javax.faces.SKIP_COMMENTS", "true");
         }
 
-        if (!isFacesServletDefined(descriptor) & version.getVersion() != 3) {
+        if (version.getVersion() < 3 && !isFacesServletDefined(descriptor) ) {
             descriptor.facesServlet();
         }
 
